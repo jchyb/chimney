@@ -3,7 +3,13 @@ import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 val versions = new {
   val scala212 = "2.12.16"
   val scala213 = "2.13.8"
+  val scala3 = "3.1.3"
 }
+
+val scala3Settings = Seq(
+  version := "0.6.2",
+  scalaVersion := versions.scala3
+)
 
 val settings = Seq(
   version := "0.6.2",
@@ -56,13 +62,18 @@ val settings = Seq(
   Compile / console / scalacOptions --= Seq("-Ywarn-unused:imports", "-Xfatal-warnings")
 )
 
-val dependencies = Seq(
+val commonDependencies = Seq(
   libraryDependencies ++= Seq(
     "org.scala-lang.modules" %%% "scala-collection-compat" % "2.8.0",
-    "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided",
+    "org.scalatest" %% "scalatest" % "3.2.13" % "test",
     "com.lihaoyi" %%% "utest" % "0.8.0" % "test"
   )
 )
+
+val dependencies = 
+  commonDependencies ++ Seq(libraryDependencies ++= Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided"))
+
+val scala3Dependencies = commonDependencies
 
 lazy val root = project
   .in(file("."))
@@ -95,6 +106,19 @@ lazy val chimney = crossProject(JSPlatform, JVMPlatform)
 lazy val chimneyJVM = chimney.jvm
 lazy val chimneyJS = chimney.js
 
+lazy val chimney3 = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Pure)
+  .dependsOn(protos % "test->test")
+  .settings(
+    moduleName := "chimney",
+    name := "chimney",
+    description := "Scala library for boilerplate free data rewriting",
+    testFrameworks += new TestFramework("utest.runner.Framework"),
+    scalacOptions ++= Seq("-Ykind-projector", "-Xcheck-macros")
+  )
+  .settings(scala3Settings: _*)
+  .settings(scala3Dependencies: _*)
+
 lazy val chimneyCats = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
   .dependsOn(chimney % "test->test;compile->compile")
@@ -119,7 +143,7 @@ lazy val protos = crossProject(JSPlatform, JVMPlatform)
     moduleName := "chimney-protos",
     name := "chimney-protos"
   )
-  .settings(settings: _*)
+  .settings(scala3Settings: _*)
   .settings(noPublishSettings: _*)
 
 lazy val protosJVM = protos.jvm
